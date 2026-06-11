@@ -1,7 +1,11 @@
 # backend/llm.py
 
 from google import genai
-from backend.config import GEMINI_API_KEY
+
+try:
+    from backend.config import GEMINI_API_KEY
+except ModuleNotFoundError:
+    from config import GEMINI_API_KEY
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 

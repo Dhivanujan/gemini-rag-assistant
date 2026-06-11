@@ -3,13 +3,20 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from backend.rag import (
-    load_documents,
-    build_vector_store,
-    get_context
-)
-
-from backend.llm import generate_response
+try:
+    from backend.rag import (
+        load_documents,
+        build_vector_store,
+        get_context
+    )
+    from backend.llm import generate_response
+except ModuleNotFoundError:
+    from rag import (
+        load_documents,
+        build_vector_store,
+        get_context
+    )
+    from llm import generate_response
 
 from fastapi.middleware.cors import CORSMiddleware
 
