@@ -1,0 +1,7 @@
+AI Chatbot Project:
+This system uses FastAPI backend and FAISS vector database.
+It supports memory and retrieval augmented generation.
+
+LMS System:
+The LMS includes course management, user roles, and certificates.
+It is built using FastAPI and React.

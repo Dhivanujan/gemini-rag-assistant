@@ -1,0 +1,25 @@
+# Sensitive files
+.env
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Python caching & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Vector store database files
+vectorstore/
+
+# OS generated files
+.DS_Store
+Thumbs.db
