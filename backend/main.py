@@ -54,26 +54,29 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    # 1. Retrieve or build chat history for the session
+    # 1. Save User Message
+    add_message(request.session_id, "user", request.message)
+
+    # 2. Load Session History (which now includes the user message)
     memory = build_chat_history(request.session_id)
 
-    # 2. Get relevant context from RAG vector store
+    # 3. Get relevant context from RAG vector store
     context = get_context(
         request.message,
         index,
         chunks
     )
 
-    # 3. Generate response via LLM incorporating memory and context
+    # 4. Generate response via LLM incorporating memory and context
     answer = generate_response(
         request.message,
         context,
         memory
     )
 
-    # 4. Save message pair to MongoDB memory
-    add_message(request.session_id, "user", request.message)
+    # 5. Save assistant response
     add_message(request.session_id, "assistant", answer)
+
 
     return {
         "question": request.message,

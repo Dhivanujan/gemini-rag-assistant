@@ -21,24 +21,33 @@ def generate_response(question, context, memory):
     - question: current user question
     """
 
+    # Format history block: check if memory ends with the current question to avoid duplication
+    # since the user message is saved before loading memory in the new request flow.
+    mem_stripped = memory.strip() if memory else ""
+    user_q_format = f"User: {question}"
+    
+    if mem_stripped.endswith(user_q_format) or mem_stripped.endswith(question.strip()):
+        history_block = mem_stripped
+    else:
+        if mem_stripped:
+            history_block = f"{mem_stripped}\n{user_q_format}"
+        else:
+            history_block = user_q_format
+
     prompt = f"""
 You are a helpful AI assistant.
 
-Use the conversation history to maintain context.
 Use the knowledge base context when it contains relevant information.
 If the answer is not in the knowledge base, use the conversation history and your general reasoning.
-
-Conversation History:
-{memory}
 
 Knowledge Base Context:
 {context}
 
-Current Question:
-{question}
-
-Answer naturally and helpfully.
+Conversation History:
+{history_block}
+Assistant:
 """
+
 
     models = [
         "gemini-2.5-flash",
