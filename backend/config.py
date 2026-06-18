@@ -14,3 +14,6 @@ if not GEMINI_API_KEY:
     raise ValueError(
         "GEMINI_API_KEY is not set. Please set it in your environment or in a .env file at the project root."
     )
+
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "chatbot_db")

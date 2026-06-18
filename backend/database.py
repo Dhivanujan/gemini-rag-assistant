@@ -1,20 +1,18 @@
 # backend/database.py
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import declarative_base
+from pymongo import MongoClient
 
-DATABASE_URL = "sqlite:///chatbot.db"
+try:
+    from backend.config import MONGODB_URI, MONGODB_DB_NAME
+except ModuleNotFoundError:
+    from config import MONGODB_URI, MONGODB_DB_NAME
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+# Setup MongoDB client
+client = MongoClient(MONGODB_URI)
+db = client[MONGODB_DB_NAME]
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+# Expose database and messages collection
+messages_collection = db["messages"]
 
-Base = declarative_base()
+def get_db():
+    return db
