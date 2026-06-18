@@ -58,7 +58,7 @@ def chat(request: ChatRequest):
     add_message(request.session_id, "user", request.message)
 
     # 2. Load Session History (which now includes the user message)
-    memory = build_chat_history(request.session_id)
+    memory = build_chat_history(request.session_id, request.message)
 
     # 3. Get relevant context from RAG vector store
     context = get_context(
