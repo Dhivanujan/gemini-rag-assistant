@@ -76,13 +76,13 @@ def save_index(index):
 
     faiss.write_index(
         index,
-        "vectorstore/faiss.index"
+        "vectorstore/knowledge.index"
     )
 
 def save_chunks(chunks):
 
     with open(
-        "vectorstore/chunks.pkl",
+        "vectorstore/knowledge_chunks.pkl",
         "wb"
     ) as f:
 
@@ -91,14 +91,14 @@ def save_chunks(chunks):
 def load_index():
 
     return faiss.read_index(
-        "vectorstore/faiss.index"
+        "vectorstore/knowledge.index"
     )
 
 def load_chunks():
 
     with open(
-        "vectorstore/chunks.pkl",
+        "vectorstore/knowledge_chunks.pkl",
         "rb"
     ) as f:
 
-        return pickle.load(f)
+        return pickle.load(f)

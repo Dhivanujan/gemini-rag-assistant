@@ -13,40 +13,47 @@ except ModuleNotFoundError:
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
-def generate_response(question, context, memory):
+def generate_response(question, context, short_term_memory, long_term_memory=""):
     """
     Generate an AI response using:
-    - memory: previous conversation history
+    - short_term_memory: recent chat messages
+    - long_term_memory: semantically retrieved facts from past conversations
     - context: retrieved RAG knowledge base context
     - question: current user question
     """
 
-    # Format history block: check if memory ends with the current question to avoid duplication
+    # Format history blocks: check if memory ends with the current question to avoid duplication
     # since the user message is saved before loading memory in the new request flow.
-    mem_stripped = memory.strip() if memory else ""
+    short_term_stripped = short_term_memory.strip() if short_term_memory else ""
     user_q_format = f"User: {question}"
     
-    if mem_stripped.endswith(user_q_format) or mem_stripped.endswith(question.strip()):
-        history_block = mem_stripped
+    if short_term_stripped.endswith(user_q_format) or short_term_stripped.endswith(question.strip()):
+        short_term_block = short_term_stripped
     else:
-        if mem_stripped:
-            history_block = f"{mem_stripped}\n{user_q_format}"
+        if short_term_stripped:
+            short_term_block = f"{short_term_stripped}\n{user_q_format}"
         else:
-            history_block = user_q_format
+            short_term_block = user_q_format
+
+    long_term_block = long_term_memory.strip() if long_term_memory else "No relevant long-term memories retrieved."
 
     prompt = f"""
 You are a helpful AI assistant.
 
 Use the knowledge base context when it contains relevant information.
-If the answer is not in the knowledge base, use the conversation history and your general reasoning.
+Use the long-term retrieved memories and short-term conversation history to maintain context and remember user facts.
 
 Knowledge Base Context:
 {context}
 
-Conversation History:
-{history_block}
+Long-Term Retrieved Memories:
+{long_term_block}
+
+Short-Term Conversation History:
+{short_term_block}
 Assistant:
 """
+
 
 
     models = [

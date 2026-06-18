@@ -86,3 +86,35 @@ def get_context(query, index, chunks):
     )
 
     return "\n\n".join(docs)
+
+
+def get_knowledge_base():
+    import os
+    import pickle
+    
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    vectorstore_dir = os.path.join(base_dir, "vectorstore")
+    os.makedirs(vectorstore_dir, exist_ok=True)
+    
+    index_path = os.path.join(vectorstore_dir, "knowledge.index")
+    chunks_path = os.path.join(vectorstore_dir, "knowledge_chunks.pkl")
+    
+    if os.path.exists(index_path) and os.path.exists(chunks_path):
+        try:
+            idx = faiss.read_index(index_path)
+            with open(chunks_path, "rb") as f:
+                chks = pickle.load(f)
+            return idx, chks
+        except Exception:
+            pass
+            
+    # Rebuild
+    chks = load_documents()
+    idx = build_vector_store(chks)
+    
+    # Save cache
+    faiss.write_index(idx, index_path)
+    with open(chunks_path, "wb") as f:
+        pickle.dump(chks, f)
+        
+    return idx, chks

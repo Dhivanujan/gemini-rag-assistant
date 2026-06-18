@@ -5,29 +5,31 @@ from pydantic import BaseModel
 
 try:
     from backend.rag import (
-        load_documents,
-        build_vector_store,
-        get_context
+        get_context,
+        get_knowledge_base
     )
     from backend.llm import generate_response
     from backend.memory import (
         add_message,
         build_chat_history,
         get_recent_messages,
-        clear_memory
+        clear_memory,
+        add_to_long_term_memory,
+        search_long_term_memory
     )
 except ModuleNotFoundError:
     from rag import (
-        load_documents,
-        build_vector_store,
-        get_context
+        get_context,
+        get_knowledge_base
     )
     from llm import generate_response
     from memory import (
         add_message,
         build_chat_history,
         get_recent_messages,
-        clear_memory
+        clear_memory,
+        add_to_long_term_memory,
+        search_long_term_memory
     )
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,9 +44,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Build RAG at startup
-chunks = load_documents()
-index = build_vector_store(chunks)
+# Load or build Knowledge Base FAISS index at startup
+knowledge_index, knowledge_chunks = get_knowledge_base()
 
 
 class ChatRequest(BaseModel):
@@ -54,33 +55,39 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    # 1. Save User Message
+    # 1. Save User Message to Short-Term (MongoDB) and Long-Term (FAISS)
     add_message(request.session_id, "user", request.message)
+    add_to_long_term_memory(request.session_id, f"User: {request.message}")
 
-    # 2. Load Session History (which now includes the user message)
-    memory = build_chat_history(request.session_id, request.message)
+    # 2. Load Short-Term Session History from MongoDB (last 15 messages)
+    short_term_memory = build_chat_history(request.session_id, limit_recent=15)
 
-    # 3. Get relevant context from RAG vector store
-    context = get_context(
+    # 3. Perform Long-Term Memory Vector Search in FAISS
+    relevant_memories = search_long_term_memory(request.session_id, request.message, k=3)
+    long_term_context = "\n".join(relevant_memories)
+
+    # 4. Perform Knowledge RAG Search in FAISS
+    knowledge_context = get_context(
         request.message,
-        index,
-        chunks
+        knowledge_index,
+        knowledge_chunks
     )
 
-    # 4. Generate response via LLM incorporating memory and context
+    # 5. Generate Response via LLM
     answer = generate_response(
         request.message,
-        context,
-        memory
+        knowledge_context,
+        short_term_memory,
+        long_term_context
     )
 
-    # 5. Save assistant response
+    # 6. Save Assistant Response to Short-Term (MongoDB) and Long-Term (FAISS)
     add_message(request.session_id, "assistant", answer)
-
+    add_to_long_term_memory(request.session_id, f"Assistant: {answer}")
 
     return {
         "question": request.message,
-        "context": context,
+        "context": knowledge_context,
         "answer": answer,
         "session_id": request.session_id
     }
@@ -104,5 +111,5 @@ def delete_history(session_id: str):
     clear_memory(session_id)
     return {
         "status": "success",
-        "message": f"Chat history for session '{session_id}' has been cleared."
+        "message": f"Chat history and long-term memory for session '{session_id}' have been cleared."
     }
