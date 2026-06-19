@@ -1,8 +1,10 @@
 # backend/api/chat.py
 
+import json
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from backend.database.models import ChatRequest, ChatResponse, HistoryResponse, MessageHistoryItem
-from backend.services.llm_service import generate_response
+from backend.services.llm_service import generate_response, generate_response_stream
 from backend.services.rag_service import get_context, get_knowledge_base_index
 from backend.services.memory_service import (
     add_message,
@@ -16,7 +18,7 @@ from backend.services.memory_service import (
 router = APIRouter()
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat")
 def chat(request: ChatRequest):
     try:
         # 1. Save User Message to Short-Term (MongoDB) and Long-Term (FAISS)
@@ -38,24 +40,53 @@ def chat(request: ChatRequest):
             knowledge_chunks
         )
 
-        # 5. Generate Response via LLM
-        answer = generate_response(
-            request.message,
-            knowledge_context,
-            short_term_memory,
-            long_term_context
-        )
+        if request.stream:
+            def event_generator():
+                try:
+                    # 1. Yield metadata event (RAG context & session_id)
+                    yield f"data: {json.dumps({'type': 'context', 'context': knowledge_context, 'session_id': request.session_id})}\n\n"
 
-        # 6. Save Assistant Response to Short-Term (MongoDB) and Long-Term (FAISS)
-        add_message(request.session_id, "assistant", answer)
-        add_to_long_term_memory(request.session_id, f"Assistant: {answer}")
+                    # 2. Yield LLM chunks and accumulate response
+                    full_response = ""
+                    for chunk in generate_response_stream(
+                        request.message,
+                        knowledge_context,
+                        short_term_memory,
+                        long_term_context
+                    ):
+                        full_response += chunk
+                        yield f"data: {json.dumps({'type': 'content', 'content': chunk})}\n\n"
 
-        return ChatResponse(
-            question=request.message,
-            context=knowledge_context,
-            answer=answer,
-            session_id=request.session_id
-        )
+                    # 3. Save Assistant response to Short-Term & Long-Term
+                    add_message(request.session_id, "assistant", full_response)
+                    add_to_long_term_memory(request.session_id, f"Assistant: {full_response}")
+
+                    # 4. Yield done event
+                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+            return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+        else:
+            # 5. Generate Response via LLM
+            answer = generate_response(
+                request.message,
+                knowledge_context,
+                short_term_memory,
+                long_term_context
+            )
+
+            # 6. Save Assistant Response to Short-Term (MongoDB) and Long-Term (FAISS)
+            add_message(request.session_id, "assistant", answer)
+            add_to_long_term_memory(request.session_id, f"Assistant: {answer}")
+
+            return ChatResponse(
+                question=request.message,
+                context=knowledge_context,
+                answer=answer,
+                session_id=request.session_id
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

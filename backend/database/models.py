@@ -7,6 +7,7 @@ from datetime import datetime
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    stream: bool = False
 
 class ChatResponse(BaseModel):
     question: str

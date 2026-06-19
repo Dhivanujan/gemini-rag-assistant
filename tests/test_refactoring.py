@@ -41,6 +41,22 @@ class TestRefactoring(unittest.TestCase):
         self.assertEqual(resp, "Hello! I am Gemini.")
         mock_client.models.generate_content.assert_called_once()
 
+    @patch("backend.services.llm_service.client")
+    def test_llm_response_stream_generation(self, mock_client):
+        from backend.services.llm_service import generate_response_stream
+        
+        # Mock stream chunks from Gemini
+        chunk1 = MagicMock()
+        chunk1.text = "Hello "
+        chunk2 = MagicMock()
+        chunk2.text = "streaming!"
+        
+        mock_client.models.generate_content_stream.return_value = [chunk1, chunk2]
+        
+        chunks = list(generate_response_stream("Hi", "context", "User: Hi"))
+        self.assertEqual(chunks, ["Hello ", "streaming!"])
+        mock_client.models.generate_content_stream.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
