@@ -1,4 +1,4 @@
-# backend/memory.py
+# backend/services/memory_service.py
 
 from datetime import datetime
 import os
@@ -7,10 +7,8 @@ import threading
 import faiss
 import numpy as np
 
-try:
-    from backend.database import messages_collection
-except ModuleNotFoundError:
-    from database import messages_collection
+from backend.database.session import messages_collection
+from backend.services.rag_service import get_embedding
 
 memory_lock = threading.Lock()
 
@@ -19,7 +17,8 @@ def get_memory_paths(session_id: str):
     """
     Generate absolute paths for the session-isolated memory store.
     """
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Resolve project root (3 levels up from backend/services/memory_service.py)
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     vectorstore_dir = os.path.join(base_dir, "vectorstore")
     os.makedirs(vectorstore_dir, exist_ok=True)
     
@@ -74,11 +73,6 @@ def add_to_long_term_memory(session_id: str, content: str):
     Embed content and add it to the session-specific FAISS index.
     """
     try:
-        from backend.rag import get_embedding
-    except ModuleNotFoundError:
-        from rag import get_embedding
-
-    try:
         emb = get_embedding(content)
         emb_expanded = np.array([emb], dtype=np.float32)
         
@@ -100,11 +94,6 @@ def search_long_term_memory(session_id: str, question: str, k: int = 3):
     index, chunks = load_memory_store(session_id)
     if index.ntotal == 0:
         return []
-        
-    try:
-        from backend.rag import get_embedding
-    except ModuleNotFoundError:
-        from rag import get_embedding
 
     try:
         query_emb = get_embedding(question)
@@ -172,9 +161,7 @@ def clear_memory(session_id: str):
     """
     Clear both short-term MongoDB history and long-term FAISS index.
     """
-    # Clear Short-Term (MongoDB)
     messages_collection.delete_many({"session_id": session_id})
-    # Clear Long-Term (FAISS files)
     clear_long_term_memory(session_id)
 
 

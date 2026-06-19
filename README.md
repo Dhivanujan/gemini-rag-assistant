@@ -19,17 +19,25 @@ An intelligent, lightweight Retrieval-Augmented Generation (RAG) chatbot backend
 ```text
 AI-RAG-Chatbot/
 ├── backend/
-│   ├── config.py           # Configuration and environment variables loader
-│   ├── llm.py              # LLM response generation with retries & fallbacks
-│   ├── main.py             # FastAPI server entry point and CORS configuration
-│   ├── memory.py           # Placeholder for conversation memory extensions
-│   ├── rag.py              # Document loading, embedding, and FAISS indexing
-│   └── test_embedding.py   # Quick verification script for embeddings
+│   ├── api/
+│   │   └── chat.py         # API router with chat & history endpoints
+│   ├── core/
+│   │   └── config.py       # Configuration and environment variable loader
+│   ├── database/
+│   │   ├── models.py       # Pydantic validation models & schemas
+│   │   └── session.py      # MongoDB client and session manager
+│   ├── services/
+│   │   ├── llm_service.py  # Google Gemini generation & retry handler
+│   │   ├── memory_service.py # Short-term and long-term memory operations
+│   │   └── rag_service.py  # Text/PDF extraction, indexing, & RAG search
+│   └── main.py             # FastAPI server and lifespan configuration
 ├── data/
-│   └── docs.txt            # Document corpus (knowledge base) used for RAG context
-├── vectorstore/            # Directory for local database artifacts
+│   └── docs.txt            # Document corpus (knowledge base) for RAG context
+├── tests/
+│   └── test_refactoring.py # Unit tests verifying refactoring & services
+├── vectorstore/            # Directory for local FAISS binary index files
 ├── .env                    # Local environment secrets (ignored by git)
-├── .gitignore              # Configured patterns to prevent tracking secrets/venv
+├── .gitignore              # Configured patterns to ignore files
 ├── README.md               # Project documentation
 └── requirements.txt        # Python dependencies
 ```
@@ -75,6 +83,22 @@ uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 The server will automatically load documents from `data/docs.txt`, build the FAISS index in-memory, and start listening on `http://127.0.0.1:8000`.
+
+### 📚 Rebuild Knowledge Base Index
+
+You can manually trigger a full rebuild of the FAISS index from the files in `data/` by running:
+
+```bash
+python -m backend.services.rag_service
+```
+
+### 🧪 Running Unit Tests
+
+Run the refactoring verification test suite to ensure configuration, embedding shape, path security, and LLM mocks are fully functional:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py"
+```
 
 ---
 

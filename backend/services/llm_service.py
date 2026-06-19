@@ -1,14 +1,9 @@
-# backend/llm.py
+# backend/services/llm_service.py
 
 import time
 from google import genai
 from google.genai import errors
-
-try:
-    from backend.config import GEMINI_API_KEY
-except ModuleNotFoundError:
-    from config import GEMINI_API_KEY
-
+from backend.core.config import GEMINI_API_KEY
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -23,7 +18,6 @@ def generate_response(question, context, short_term_memory, long_term_memory="")
     """
 
     # Format history blocks: check if memory ends with the current question to avoid duplication
-    # since the user message is saved before loading memory in the new request flow.
     short_term_stripped = short_term_memory.strip() if short_term_memory else ""
     user_q_format = f"User: {question}"
     
@@ -53,8 +47,6 @@ Short-Term Conversation History:
 {short_term_block}
 Assistant:
 """
-
-
 
     models = [
         "gemini-2.5-flash",
